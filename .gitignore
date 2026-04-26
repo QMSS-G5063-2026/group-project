@@ -1,0 +1,15 @@
+# Generated data (re-run prep_data.py to create locally)
+data/companies_clean.parquet
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Streamlit cache
+.streamlit/
+
+# Environment
+.env
+*.egg-info/
