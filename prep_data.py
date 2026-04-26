@@ -1,10 +1,9 @@
 """
-prep_data.py
-数据清洗脚本：原始 CSV → companies_clean.parquet
+prep_data.py -- Data cleaning pipeline: raw CSV -> companies_clean.parquet
 
-用法：python prep_data.py
-输入：data/yc-companies.csv
-输出：data/companies_clean.parquet
+Usage:  python prep_data.py
+Input:  data/yc-companies.csv
+Output: data/companies_clean.parquet
 """
 
 import pandas as pd
@@ -12,15 +11,15 @@ from pathlib import Path
 
 
 # ============================================================
-# 配置
+# Configuration
 # ============================================================
 
 INPUT_PATH = Path("data/yc-companies.csv")
 OUTPUT_PATH = Path("data/companies_clean.parquet")
-MIN_BATCH_SIZE = 100  # 排除年度公司数 < 100 的年份
+MIN_BATCH_SIZE = 100  # drop years with fewer than this many companies
 
 
-# ---------- Wave 定义 ----------
+# -- Wave tag definitions ----------------------------------------------------
 
 AI_TAGS = {
     'ai', 'artificial-intelligence', 'generative-ai', 'machine-learning',
@@ -36,7 +35,7 @@ PAST_WAVES = {
 }
 
 
-# ---------- 地理分类 ----------
+# -- Geographic classification -----------------------------------------------
 
 BAY_AREA_CITIES = {
     'San Francisco', 'Mountain View', 'Palo Alto', 'Berkeley',
@@ -50,7 +49,7 @@ BAY_AREA_CITIES = {
 NYC_CITIES = {'New York', 'Brooklyn', 'Manhattan', 'Queens'}
 
 
-# ---------- 保留的字段 ----------
+# -- Columns to retain -------------------------------------------------------
 
 COLS_TO_KEEP = [
     'Company ID', 'Company Name', 'Slug',
@@ -64,11 +63,11 @@ COLS_TO_KEEP = [
 
 
 # ============================================================
-# 工具函数
+# Helper functions
 # ============================================================
 
 def parse_batch(batch):
-    """Batch 格式固定为 'Summer 2023' / 'Winter 2024'，按空格切分。"""
+    """Parse 'Summer 2023' / 'Winter 2024' -> (season, year)."""
     if pd.isna(batch):
         return None, None
     parts = str(batch).split(' ')
@@ -100,30 +99,30 @@ def classify_region(city, country):
 
 
 # ============================================================
-# 主流程
+# Main pipeline
 # ============================================================
 
 def main():
-    print(f"→ 读取 {INPUT_PATH}...")
+    print(f"Reading {INPUT_PATH}...")
     df = pd.read_csv(INPUT_PATH).dropna(how='all').copy()
-    print(f"  原始行数: {len(df)}")
+    print(f"  Raw rows: {len(df)}")
 
-    print("→ 保留必要字段...")
+    print("Selecting columns...")
     keep = [c for c in COLS_TO_KEEP if c in df.columns]
     df = df[keep].copy()
 
-    print("→ 解析 batch...")
+    print("Parsing batch...")
     parsed = df['Batch'].apply(parse_batch)
     df['season'] = parsed.apply(lambda x: x[0])
     df['year'] = parsed.apply(lambda x: x[1])
-    print(f"  year 解析成功率: {df['year'].notna().mean():.1%}")
+    print(f"  Year parse success rate: {df['year'].notna().mean():.1%}")
 
-    print("→ 切分 tags...")
+    print("Parsing tags...")
     df['Tags'] = df['Tags'].fillna('').str.lower()
     df['tag_list'] = df['Tags'].apply(parse_tags)
     df['n_tags'] = df['tag_list'].apply(len)
 
-    print("→ 标记 wave 归属...")
+    print("Labeling wave membership...")
     df['is_AI'] = df['tag_list'].apply(
         lambda tags: any(t in AI_TAGS for t in tags)
     )
@@ -136,44 +135,44 @@ def main():
     wave_cols = ['is_AI'] + [f'is_{w}' for w in PAST_WAVES]
     df['n_waves'] = df[wave_cols].sum(axis=1)
 
-    print("→ 分类 region...")
+    print("Classifying regions...")
     df['region'] = df.apply(
         lambda row: classify_region(row['City'], row['Country']),
         axis=1,
     )
 
-    print("→ 过滤小样本年份...")
+    print("Filtering small-batch years...")
     yearly = df.groupby('year').size()
     valid_years = yearly[yearly >= MIN_BATCH_SIZE].index
     df = df[df['year'].isin(valid_years)].copy()
-    print(f"  保留年份: {sorted(valid_years.tolist())}")
-    print(f"  保留行数: {len(df)}")
+    print(f"  Years retained: {sorted(valid_years.tolist())}")
+    print(f"  Rows retained: {len(df)}")
 
-    print(f"→ 保存 {OUTPUT_PATH}...")
+    print(f"Saving to {OUTPUT_PATH}...")
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(OUTPUT_PATH, index=False)
 
-    # ===== 验证摘要 =====
+    # Summary
     print("\n" + "=" * 60)
-    print("✓ 清洗完成")
+    print("Done.")
     print("=" * 60)
-    print(f"\n总公司数: {len(df)}")
-    print(f"年份范围: {df['year'].min()}-{df['year'].max()}（{df['year'].nunique()} 年）")
+    print(f"\nTotal companies: {len(df)}")
+    print(f"Year range: {df['year'].min()}-{df['year'].max()} ({df['year'].nunique()} years)")
 
-    print(f"\nWave 分布:")
+    print("\nWave distribution:")
     for c in wave_cols:
         print(f"  {c:25s}: {df[c].sum():>5d}")
 
-    print(f"\n归属 wave 数分布:")
+    print("\nWave membership count distribution:")
     print(df['n_waves'].value_counts().sort_index().to_string())
 
-    print(f"\nRegion 分布:")
+    print("\nRegion distribution:")
     print(df['region'].value_counts().to_string())
 
-    print(f"\nAI 渗透率（按 region）:")
+    print("\nAI penetration rate by region:")
     print(df.groupby('region')['is_AI'].mean().round(3).to_string())
 
-    print(f"\nAI 渗透率（按 region × 年份，2018-2025）:")
+    print("\nAI penetration rate by region x year (2018-2025):")
     pivot = (
         df[df['year'] >= 2018]
         .groupby(['year', 'region'])['is_AI']
@@ -183,7 +182,7 @@ def main():
     )
     print(pivot.to_string())
 
-    print(f"\n字段一览（{len(df.columns)} 列）:")
+    print(f"\nColumn overview ({len(df.columns)} columns):")
     print(df.dtypes.to_string())
 
 

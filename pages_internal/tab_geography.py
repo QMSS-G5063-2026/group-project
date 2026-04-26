@@ -1,30 +1,37 @@
 """
-Tab 3 — Geography
-Owner: 组员 C
+Tab -- Geography
+Owner: Team Member C
 
-Question: Does AI's geographic distribution match past waves?
+Question: Does AI's geographic shape match past trends?
 
-Required deliverables:
-- Main chart: Bay Area concentration over time (AI vs Non-AI, two lines)
-- Sub-chart: Map showing top cities (toggle 2018 vs 2024)
+Deliverables:
+- Main chart: Bay Area concentration over time -- AI line vs non-AI line
+- Map: top-20 cities, toggle between 2018 and 2024
 - 3 metric cards
-- Finding text + caveat
+- Finding callout + caveat note
 
-Available utils:
-- utils.compute_bay_area_concentration(df) → DataFrame
-- utils.compute_city_stats(df, year, top_n) → DataFrame
+Available from utils:
+- utils.compute_bay_area_concentration(df) -> DataFrame
+    index=year, cols=['AI in Bay Area %', 'Non-AI in Bay Area %', 'Gap']
+- utils.compute_city_stats(df, year, top_n) -> DataFrame
+    cols=['City', 'Country', 'n_companies', 'ai_pct']
 - utils.COLORS
 
-Required libraries:
+Required libraries (already in requirements.txt):
 - plotly (line chart)
 - folium + streamlit-folium (map)
-  → both in requirements.txt
 
 Style rules:
-- AI line: utils.COLORS['AI'] (red), thick
-- Non-AI line: gray, dashed
-- Map: circle radius ∝ company count, color ∝ AI %
-- Don't reload data
+- AI line: utils.COLORS['AI'] (#E6550D), width=3, solid
+- Non-AI line: '#969696', width=2, dash='dot'
+- Add fill='tonexty' between the two lines to emphasize the widening gap
+- Map: CircleMarker per city; radius proportional to n_companies;
+  color proportional to ai_pct (orange = high AI share)
+- Use the df argument -- do not reload data
+
+Tip for map geocoding:
+  Maintain a hardcoded city -> (lat, lng) dict for the top-20 cities.
+  This is faster and more reliable than live geocoding since top cities are stable.
 """
 
 import streamlit as st
@@ -33,31 +40,33 @@ import utils
 
 
 def render(df):
-    st.markdown("### Geography: Did AI flatten the map, or re-concentrate it?")
-
-    # ===== Compute =====
+    # -- Compute -------------------------------------------------------------
     bay = utils.compute_bay_area_concentration(df)
 
-    # ===== Metrics =====
-    ai_bay_2024 = bay.loc[2024, 'AI in Bay Area %']
+    ai_bay_2024    = bay.loc[2024, 'AI in Bay Area %']
     nonai_bay_2024 = bay.loc[2024, 'Non-AI in Bay Area %']
-    gap_2024 = bay.loc[2024, 'Gap']
+    gap_2024       = bay.loc[2024, 'Gap']
 
+    # -- Metric cards --------------------------------------------------------
     col1, col2, col3 = st.columns(3)
-    col1.metric("AI in Bay Area (2024)", f"{ai_bay_2024:.0f}%")
-    col2.metric("Non-AI in Bay Area (2024)", f"{nonai_bay_2024:.0f}%")
+    col1.metric("AI companies in Bay Area (2024)", f"{ai_bay_2024:.0f}%")
+    col2.metric("Non-AI companies in Bay Area (2024)", f"{nonai_bay_2024:.0f}%")
     col3.metric("Concentration gap", f"+{gap_2024:.0f} pts", "and growing")
 
-    # ===== Main chart =====
-    # TODO 组员 C:
-    # 画两线图：AI vs 非 AI 公司在 Bay Area 的占比
-    # 1. X 轴 year, Y 轴 0-100%
-    # 2. 红线 = AI, 灰线 = Non-AI
-    # 3. 用 fill='tonexty' 把两条线之间的差距区域填色（强化"差距扩大"的视觉）
+    # -- Main chart ----------------------------------------------------------
+    # TODO (Team Member C):
+    # Draw a two-line Bay Area concentration chart:
+    # 1. X-axis: year, Y-axis: 0-100%, ticksuffix='%'
+    # 2. AI line: utils.COLORS['AI'], width=3
+    # 3. Non-AI line: '#969696', width=2, dash='dot'
+    # 4. Use fill='tonexty' to shade the gap region between the two lines
+    #    (shade color: light orange at low opacity, e.g. rgba(230,85,13,0.08))
+    # 5. Annotate the 2024 gap value (+N pts) at the right edge of the chart
+    # 6. Hover: show both percentages and the gap at each year
 
-    st.info("👉 组员 C: 在这里画 Bay Area 集中度对比图")
+    st.info("Team Member C: add the Bay Area concentration line chart here.")
 
-    # ===== Map (left/right layout) =====
+    # -- Map -----------------------------------------------------------------
     st.markdown("---")
     st.markdown("#### Where YC companies are based")
 
@@ -70,34 +79,43 @@ def render(df):
 
     city_stats = utils.compute_city_stats(df, year=map_year, top_n=20)
 
-    # TODO 组员 C:
-    # 用 folium 画地图
-    # 1. 每个城市一个 CircleMarker
-    # 2. 半径 ∝ city_stats['n_companies']
-    # 3. 颜色 ∝ city_stats['ai_pct']（用 colormap，红到灰）
-    # 4. tooltip 显示城市名、公司数、AI%
-    # 5. 用 streamlit_folium.st_folium() 渲染
+    # TODO (Team Member C):
+    # Draw a folium map of the top-20 cities:
+    # 1. One CircleMarker per city
+    # 2. Radius proportional to city_stats['n_companies'] (scale: radius = sqrt(n) * 1.5)
+    # 3. Color proportional to city_stats['ai_pct']
+    #    (use a colormap from gray to utils.COLORS['AI'])
+    # 4. Tooltip: city name, n_companies, ai_pct
+    # 5. Render with: from streamlit_folium import st_folium; st_folium(m, use_container_width=True)
     #
-    # 注意：城市坐标需要 geocoding。可以：
-    # (a) 用 geopy 实时 geocode（慢但准）
-    # (b) 维护一个 city → (lat, lng) 字典（快但有限）
-    # 推荐 (b)，因为 top 20 城市基本固定
+    # Hardcoded coordinates for the top-20 most common cities:
+    # {
+    #   'San Francisco': (37.774, -122.419), 'New York': (40.712, -74.006),
+    #   'London': (51.507, -0.128), 'Mountain View': (37.386, -122.084),
+    #   'Palo Alto': (37.441, -122.143), 'Seattle': (47.606, -122.332),
+    #   'Boston': (42.360, -71.059), 'Austin': (30.267, -97.743),
+    #   'Los Angeles': (34.052, -118.244), 'Chicago': (41.878, -87.630),
+    #   'Toronto': (43.653, -79.383), 'Berlin': (52.520, 13.405),
+    #   'Singapore': (1.352, 103.820), 'Bangalore': (12.972, 77.594),
+    #   'Tel Aviv': (32.085, 34.781), 'Paris': (48.857, 2.347),
+    #   'Mumbai': (19.076, 72.878), 'Sydney': (-33.869, 151.209),
+    #   'Toronto': (43.653, -79.383), 'Denver': (39.739, -104.984),
+    # }
 
-    st.info(f"👉 组员 C: 这里画 {map_year} 年的地图（top 20 城市）")
+    st.info(f"Team Member C: render the {map_year} city map (top-20 cities).")
     st.dataframe(city_stats, use_container_width=True, hide_index=True)
 
-    # ===== Finding =====
+    # -- Finding -------------------------------------------------------------
     utils.finding_box(
         f"<strong>Remote work was expected to flatten startup geography.</strong><br>"
-        f"Among AI companies, the opposite happened. Bay Area's share among AI "
-        f"companies grew, while non-AI companies dispersed more broadly. "
+        f"Among AI companies, the opposite happened -- Bay Area concentration grew, "
+        f"while non-AI companies dispersed more broadly. "
         f"The gap reached +{gap_2024:.0f} points in 2024 and continues to widen."
     )
 
-    # ===== Caveat =====
     st.caption(
-        "**Caveat**: YC has a known preference for Bay Area founders. However, "
-        "the *gap* between AI and non-AI Bay Area concentration — and its growth "
-        "over time — cannot be explained by YC's general preference, since both "
-        "groups are subject to the same selection."
+        "**Caveat:** YC has a known preference for Bay Area founders. However, "
+        "the *gap* between AI and non-AI Bay Area concentration -- and its growth "
+        "over time -- cannot be attributed to YC's general preference, since both "
+        "groups are subject to the same selection process."
     )

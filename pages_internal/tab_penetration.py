@@ -1,30 +1,32 @@
 """
-Tab 2 — Penetration
-Owner: 组员 B
+Tab -- Coexistence
+Owner: Team Member B
 
-Question: Is AI parallel to other waves, or absorbed into them?
+Question: Does AI exist alongside other trends, or inside them?
 
-Required deliverables:
-- Main chart: AI penetration into each past wave, by year (3 lines)
-- Sub-chart (in expander): tag co-occurrence network with year slider
+Deliverables:
+- Main chart: AI coexistence rate in each reference trend by year (3 lines)
+- Expander: tag co-occurrence network with year slider (2011-2025)
 - 3 metric cards
-- Finding text below
+- Finding callout below
 
-Available utils:
-- utils.compute_ai_penetration(df) → DataFrame
-- utils.compute_cooccurrence(df, year, top_n, min_count) → (edges, nodes)
-- utils.PAST_WAVES, utils.COLORS
+Available from utils:
+- utils.compute_ai_coexistence(df) -> DataFrame
+    index=year, cols=['AI in Enterprise SaaS', 'AI in Fintech', 'AI in Developer Tools']
+- utils.compute_cooccurrence(df, year, top_n, min_count) -> (edges, nodes)
+- utils.REFERENCE_TRENDS, utils.COLORS
 
-Required libraries:
+Required libraries (already in requirements.txt):
 - plotly (main chart)
-- networkx + pyvis (or plotly) for network visualization
-  → networkx is in requirements.txt
+- networkx for spring_layout; pyvis or plotly for network rendering
 
 Style rules:
-- 3 lines should use distinct but harmonious colors
-- Network: AI-related nodes should be visually highlighted (size or color)
-- No more than 2 interactive controls in main view; year slider in expander OK
-- Don't reload data
+- All 3 lines should be visually prominent -- no gray lines; use distinct colors
+- Suggested: Enterprise SaaS blue (#3182BD), Fintech green (#31A354), DevTools teal
+- Network nodes: size proportional to n_companies, color proportional to ai_pct
+  (orange = high AI share)
+- Max 2 interactive controls in main view; year slider inside expander is fine
+- Use the df argument -- do not reload data
 """
 
 import streamlit as st
@@ -33,36 +35,37 @@ import utils
 
 
 def render(df):
-    st.markdown("### Penetration: Is AI parallel, or absorbed?")
+    # -- Compute -------------------------------------------------------------
+    coexistence = utils.compute_ai_coexistence(df)
 
-    # ===== Compute =====
-    penetration = utils.compute_ai_penetration(df)
+    saas_2025     = coexistence.loc[2025, 'AI in Enterprise SaaS']
+    fintech_2025  = coexistence.loc[2025, 'AI in Fintech']
+    devtools_2025 = coexistence.loc[2025, 'AI in Developer Tools']
 
-    # ===== Metrics =====
-    saas_2025 = penetration.loc[2025, 'AI in Enterprise SaaS']
-    fintech_2025 = penetration.loc[2025, 'AI in Fintech']
-    devtools_2025 = penetration.loc[2025, 'AI in Developer Tools']
-
+    # -- Metric cards --------------------------------------------------------
     col1, col2, col3 = st.columns(3)
-    col1.metric("AI in Enterprise SaaS (2025)", f"{saas_2025:.0f}%",
-                "vs 4% in 2014")
+    col1.metric("AI in Enterprise SaaS (2025)", f"{saas_2025:.0f}%", "vs 4% in 2014")
     col2.metric("AI in Fintech (2025)", f"{fintech_2025:.0f}%")
     col3.metric("AI in Developer Tools (2025)", f"{devtools_2025:.0f}%")
 
-    # ===== Main chart =====
-    # TODO 组员 B:
-    # 画三线图：AI 在每个 past wave 中的渗透率
-    # 1. X 轴 year, Y 轴 0-100%
-    # 2. 三条线分别是 'AI in Enterprise SaaS', 'AI in Fintech', 'AI in Developer Tools'
-    # 3. 在 2022 年加竖线 "ChatGPT launched"
-    # 4. 三条线都应该突出显示（不要任何一条是灰色，因为这一页就是讲渗透）
+    # -- Main chart ----------------------------------------------------------
+    # TODO (Team Member B):
+    # Draw a 3-line coexistence chart:
+    # 1. X-axis: year, Y-axis: 0-100%, ticksuffix='%'
+    # 2. One line per column in the 'coexistence' DataFrame:
+    #    'AI in Enterprise SaaS', 'AI in Fintech', 'AI in Developer Tools'
+    # 3. Add a vertical line at 2022 labeled "ChatGPT launched"
+    # 4. All three lines must be visually distinct (no gray); use utils.COLORS
+    # 5. Hover shows exact coexistence % for each trend at each year
 
-    st.info("👉 组员 B: 在这里画三线渗透图")
+    st.info("Team Member B: add the 3-line coexistence chart here.")
 
-    # ===== Co-occurrence network (in expander) =====
-    with st.expander("▾ Tag co-occurrence network (interactive)"):
+    # -- Co-occurrence network (in expander) ---------------------------------
+    with st.expander("Tag co-occurrence network (interactive)"):
         st.markdown(
-            "Drag the year slider to see how AI's connections to other tags evolved."
+            "Use the year slider to see how AI's tag connections evolved over time. "
+            "Node size = number of companies. Node color = share of companies also tagged AI "
+            "(orange = high AI coexistence)."
         )
 
         year = st.slider(
@@ -70,24 +73,29 @@ def render(df):
             min_value=int(df['year'].min()),
             max_value=int(df['year'].max()),
             value=2025,
-            key='penetration_year_slider',
+            key='coexistence_year_slider',
         )
 
         edges, nodes = utils.compute_cooccurrence(df, year=year, top_n=30, min_count=5)
 
-        # TODO 组员 B:
-        # 用 plotly 或 pyvis 画共现网络
-        # 1. 节点 = top 30 tags（来自 nodes dict）
-        # 2. 节点大小 ∝ nodes[tag]['n_companies']
-        # 3. 节点颜色 ∝ nodes[tag]['ai_pct']（红色 = AI 渗透高）
-        # 4. 边 = edges 列表，宽度 ∝ edges[i]['count']
-        # 5. 用 networkx 算 spring_layout 决定位置
+        # TODO (Team Member B):
+        # Draw the co-occurrence network using Plotly or pyvis:
+        # 1. Nodes = top-30 tags (from 'nodes' dict)
+        # 2. Node size proportional to nodes[tag]['n_companies']
+        # 3. Node color proportional to nodes[tag]['ai_pct']
+        #    (use a sequential colorscale, e.g. Oranges; high = more AI overlap)
+        # 4. Edge width proportional to edges[i]['count']
+        # 5. Use networkx spring_layout to compute node positions
+        # 6. Tooltip: tag name, n_companies, ai_pct
 
-        st.info(f"👉 组员 B: 这里画 {year} 年的共现网络（{len(edges)} 条边，{len(nodes)} 个节点）")
+        st.info(
+            f"Team Member B: render the {year} co-occurrence network "
+            f"({len(edges)} edges, {len(nodes)} nodes)."
+        )
 
-    # ===== Finding =====
+    # -- Finding -------------------------------------------------------------
     utils.finding_box(
-        f"<strong>Past waves were independent sectors. AI is not.</strong><br>"
-        f"By 2025, AI is absorbed into {saas_2025:.0f}% of Enterprise SaaS, "
+        f"<strong>Past trends coexisted as parallel sectors. AI does not.</strong><br>"
+        f"By 2025, AI appears inside {saas_2025:.0f}% of Enterprise SaaS companies, "
         f"{fintech_2025:.0f}% of Fintech, and {devtools_2025:.0f}% of Developer Tools."
     )

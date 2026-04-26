@@ -1,136 +1,122 @@
 """
-P3 — The Answer
-
-Goal: Synthesize the three findings. Answer the research question.
+page3_answer.py -- Conclusion section rendered at the bottom of the single-page app.
 """
 
 import streamlit as st
 import utils
 
 
-def render(df):
-    st.markdown(
-        '<div class="main-title">The Answer</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div class="subtitle">Three measurements. One conclusion.</div>',
-        unsafe_allow_html=True,
-    )
+def render_conclusion(df):
+    trend_share  = utils.compute_trend_share_yearly(df)
+    ai_peak      = trend_share['AI'].max()
+    past_max     = trend_share[utils.REFERENCE_TRENDS].max().max()
+    multiple     = ai_peak / past_max
 
-    # ===== Findings recap =====
-    st.markdown("### Three findings")
+    coexistence  = utils.compute_ai_coexistence(df)
+    saas_2025    = coexistence.loc[2025, 'AI in Enterprise SaaS']
 
-    wave_share = utils.compute_wave_share_yearly(df)
-    ai_peak = wave_share['AI'].max()
-    past_max = wave_share[utils.PAST_WAVES].max().max()
-    multiple = ai_peak / past_max
-
-    penetration = utils.compute_ai_penetration(df)
-    saas_2025 = penetration.loc[2025, 'AI in Enterprise SaaS']
-
-    bay = utils.compute_bay_area_concentration(df)
+    bay          = utils.compute_bay_area_concentration(df)
     bay_gap_2025 = bay.loc[2025, 'Gap']
 
-    col1, col2, col3 = st.columns(3)
+    orange = utils.COLORS['AI']
 
-    with col1:
-        st.markdown(
-            f"<div style='border-top: 3px solid {utils.COLORS['AI']}; padding-top: 12px;'>"
-            f"<div style='font-size: 11px; color: #888; letter-spacing: 1px; "
-            f"text-transform: uppercase;'>Scale</div>"
-            f"<div style='font-size: 32px; font-weight: 600; margin: 8px 0;'>"
-            f"{multiple:.1f}×</div>"
-            f"<div style='color: #555; font-size: 14px; line-height: 1.5;'>"
-            f"AI peak ({ai_peak:.0f}%) exceeds the highest past wave "
-            f"({past_max:.0f}%) by {multiple:.1f}×.</div></div>",
-            unsafe_allow_html=True,
+    # -- Three finding cards -------------------------------------------------
+    def card(label, value, desc):
+        return (
+            f"<div style='border-top:3px solid {orange};padding-top:14px;'>"
+            f"<div style='font-size:11px;color:#888;letter-spacing:1.5px;"
+            f"text-transform:uppercase;margin-bottom:6px;'>{label}</div>"
+            f"<div style='font-size:34px;font-weight:700;color:#111;"
+            f"margin-bottom:8px;'>{value}</div>"
+            f"<div style='font-size:14px;color:#555;line-height:1.55;'>{desc}</div>"
+            f"</div>"
         )
 
-    with col2:
-        st.markdown(
-            f"<div style='border-top: 3px solid {utils.COLORS['AI']}; padding-top: 12px;'>"
-            f"<div style='font-size: 11px; color: #888; letter-spacing: 1px; "
-            f"text-transform: uppercase;'>Penetration</div>"
-            f"<div style='font-size: 32px; font-weight: 600; margin: 8px 0;'>"
-            f"{saas_2025:.0f}%</div>"
-            f"<div style='color: #555; font-size: 14px; line-height: 1.5;'>"
-            f"of Enterprise SaaS companies in 2025 are also AI companies. "
-            f"Up from 4% in 2014.</div></div>",
-            unsafe_allow_html=True,
-        )
+    c1, c2, c3 = st.columns(3)
 
-    with col3:
-        st.markdown(
-            f"<div style='border-top: 3px solid {utils.COLORS['AI']}; padding-top: 12px;'>"
-            f"<div style='font-size: 11px; color: #888; letter-spacing: 1px; "
-            f"text-transform: uppercase;'>Geography</div>"
-            f"<div style='font-size: 32px; font-weight: 600; margin: 8px 0;'>"
-            f"+{bay_gap_2025:.0f} pts</div>"
-            f"<div style='color: #555; font-size: 14px; line-height: 1.5;'>"
-            f"Bay Area concentration gap between AI and non-AI companies in 2025. "
-            f"Growing year over year.</div></div>",
-            unsafe_allow_html=True,
-        )
+    with c1:
+        st.markdown(card(
+            "Magnitude", f"{multiple:.1f}x",
+            f"AI exceeded every reference trend by {multiple:.1f}x "
+            f"and has not plateaued."
+        ), unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(card(
+            "Coexistence", f"{saas_2025:.0f}%",
+            f"of Enterprise SaaS companies in 2025 are also AI companies -- "
+            "up from 4% in 2014."
+        ), unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(card(
+            "Geography", f"+{bay_gap_2025:.0f} pts",
+            "Bay Area concentration gap between AI and non-AI companies in 2025, "
+            "growing year over year."
+        ), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ===== Question recall =====
-    st.markdown("""
-    <div class="question-block">
-    Does AI follow the shape of past waves, or does it represent something different?
+    # -- Question recall -----------------------------------------------------
+    st.markdown(f"""
+    <div style='font-size:18px;font-weight:500;color:#111;line-height:1.5;
+                padding:24px 0;border-top:1px solid #E8E8E8;
+                border-bottom:1px solid #E8E8E8;margin:8px 0 32px;'>
+      Does AI's trend look like the trends that came before it?
     </div>
     """, unsafe_allow_html=True)
 
-    # ===== Answer =====
-    st.markdown("""
-    <div style='background: #FAFAF8; padding: 32px 40px; margin: 32px 0;
-                border-radius: 8px; border-left: 4px solid #D85A30;'>
-    <p style='font-size: 17px; line-height: 1.7; color: #1A1A1A; margin-bottom: 16px;'>
-    Past waves were <strong>sectors</strong> — defined by industry, business model, or function.
-    Bounded. Peaking. Eventually fading.
-    </p>
-    <p style='font-size: 17px; line-height: 1.7; color: #1A1A1A; margin-bottom: 0;'>
-    AI is not a sector.<br>
-    It is a <strong>dimension</strong> — one that cuts across them all.
-    </p>
+    # -- Answer block --------------------------------------------------------
+    st.markdown(f"""
+    <div style='border-left:3px solid {orange};padding:28px 36px;
+                background:#FFF8F3;border-radius:2px;margin:0 0 32px;'>
+      <p style='font-size:16px;line-height:1.8;color:#111;margin:0 0 16px;'>
+        Past trends rose, sustained, and made room for the next.
+      </p>
+      <p style='font-size:16px;line-height:1.8;color:#111;margin:0;'>
+        AI's trend is doing something different.<br>
+        It does not replace past trends &mdash;
+        <strong style='color:{orange};'>it appears inside them.</strong><br>
+        It does not disperse &mdash;
+        <strong style='color:{orange};'>it concentrates.</strong><br>
+        It has not plateaued.
+      </p>
+      <p style='font-size:16px;line-height:1.8;color:#111;margin:16px 0 0;
+                border-top:1px solid #FAD5C0;padding-top:16px;'>
+        AI's trend reshapes other trends.<br>
+        Past trends did not.
+      </p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # ===== Methodology expander =====
-    with st.expander("▾ Methodology & caveats"):
+    # -- Methodology (collapsed) ---------------------------------------------
+    with st.expander("Methodology & caveats"):
         st.markdown("""
 **Data**
-HuggingFace `datahiveai/ycombinator-companies`, 5,080 companies, 2011–2025.
-Filtered to years with ≥100 companies.
+HuggingFace `datahiveai/ycombinator-companies`, 5,080 companies, 2011-2025.
+Filtered to years with >= 100 companies per batch.
 
-**Wave selection**
-Three representative past waves chosen for comparison with AI:
-- **Enterprise SaaS** (saas + b2b) — merged via Jaccard similarity (0.33)
-- **Fintech** (fintech) — independent
-- **Developer Tools** (developer-tools) — independent
+**Trend selection criteria**
+Each reference trend meets:
+- >= 200 cumulative companies
+- Peak >= 10%, sustained >= 5% for >= 3 years
+- Has ended its growth phase
 
-Each wave meets three criteria: industry recognition (per YC's own RFS),
-≥200 cumulative companies, peak share ≥10% sustained for ≥3 years.
+Selected reference trends: Enterprise SaaS (saas + b2b, Jaccard 0.33), Fintech, Developer Tools.
 
 **Excluded from comparison**
-- *Consumer / Mobile internet (2005–2016)* — predates dataset coverage.
-- *Crypto / Web3* — fewer than 80 companies in YC's portfolio (per YC's own RFS),
-  insufficient scale within our data.
-- *Marketplace* — peak 11.4% only in 2011, did not recur.
+- Consumer / Mobile (2005-2016): predates dataset coverage
+- Crypto / Web3: fewer than 80 YC companies, insufficient scale
+- Marketplace: peak 11.4% only in 2011, did not recur
 
-**Methodological limitations**
-- We have **no outcome data** (funding, valuation, exits). This study measures
-  concentration, not impact.
-- The four waves are **not orthogonal** — they reflect different dimensions
-  (business model, industry, function, technology) in YC's tag taxonomy.
-  This is not noise; it is precisely the structural feature that distinguishes AI.
+**Methodological notes**
+- No outcome data (funding, exits). This study measures concentration, not impact.
+- Reference trends are not strictly orthogonal -- they reflect different facets of YC's tag
+  taxonomy. Treated as historical references, not a mutually exclusive classification.
 - YC's labeling is inconsistent: `ai` vs `artificial-intelligence` Jaccard = 0.09.
   We performed concept-level merging across 16 AI sub-tags.
-- 2024–2025 companies have fewer tags on average (likely a data lag), which may
-  slightly underestimate cross-wave penetration.
+- 2024-2025 companies have fewer tags on average (likely data lag), which may
+  underestimate coexistence rates.
 - YC has a known Bay Area preference; geographic findings should be understood
-  as "trends within YC's selection."
+  as trends within YC's selection, not the broader ecosystem.
 """)
