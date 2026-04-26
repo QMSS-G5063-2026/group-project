@@ -1,3 +1,6 @@
+This is a final project repo for QMSS-G5063-2026 (Data Visualization, Spring 2026) 
+Group member: Xiang Fan (xf2300), Zhicheng Jiang (zj2433), Jiahao Huang (jh5140), Yehua Huang (yh3932)
+
 # YC at 20: Three Waves Before AI
 
 An interactive data visualization exploring how AI compares to past Y Combinator investment waves
