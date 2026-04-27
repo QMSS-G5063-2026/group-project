@@ -2,7 +2,7 @@
 prep_data.py -- Data cleaning pipeline: raw CSV -> companies_clean.parquet
 
 Usage:  python prep_data.py
-Input:  data/yc-companies.csv
+Input:  data/yc-companies.csv   (raw Hugging Face dataset)
 Output: data/companies_clean.parquet
 """
 
@@ -28,7 +28,9 @@ AI_TAGS = {
     'nlp', 'chatbot', 'chatbots', 'speech-recognition', 'recommendation-system',
 }
 
-PAST_WAVES = {
+# Reference trends — column suffix must match utils.trend_col() convention:
+# 'Enterprise SaaS' -> 'is_Enterprise_SaaS', etc.
+REFERENCE_TREND_TAGS = {
     'Enterprise_SaaS': {'saas', 'b2b'},
     'Fintech':         {'fintech'},
     'Developer_Tools': {'developer-tools'},
@@ -122,18 +124,18 @@ def main():
     df['tag_list'] = df['Tags'].apply(parse_tags)
     df['n_tags'] = df['tag_list'].apply(len)
 
-    print("Labeling wave membership...")
+    print("Labeling trend membership...")
     df['is_AI'] = df['tag_list'].apply(
         lambda tags: any(t in AI_TAGS for t in tags)
     )
-    for wave_name, wave_tags in PAST_WAVES.items():
-        col = f'is_{wave_name}'
+    for trend_name, trend_tags in REFERENCE_TREND_TAGS.items():
+        col = f'is_{trend_name}'
         df[col] = df['tag_list'].apply(
-            lambda tags: any(t in wave_tags for t in tags)
+            lambda tags: any(t in trend_tags for t in tags)
         )
 
-    wave_cols = ['is_AI'] + [f'is_{w}' for w in PAST_WAVES]
-    df['n_waves'] = df[wave_cols].sum(axis=1)
+    trend_cols = ['is_AI'] + [f'is_{t}' for t in REFERENCE_TREND_TAGS]
+    df['n_trends'] = df[trend_cols].sum(axis=1)
 
     print("Classifying regions...")
     df['region'] = df.apply(
@@ -159,12 +161,12 @@ def main():
     print(f"\nTotal companies: {len(df)}")
     print(f"Year range: {df['year'].min()}-{df['year'].max()} ({df['year'].nunique()} years)")
 
-    print("\nWave distribution:")
-    for c in wave_cols:
+    print("\nTrend distribution:")
+    for c in trend_cols:
         print(f"  {c:25s}: {df[c].sum():>5d}")
 
-    print("\nWave membership count distribution:")
-    print(df['n_waves'].value_counts().sort_index().to_string())
+    print("\nTrend membership count distribution:")
+    print(df['n_trends'].value_counts().sort_index().to_string())
 
     print("\nRegion distribution:")
     print(df['region'].value_counts().to_string())
