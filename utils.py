@@ -6,38 +6,25 @@ All pages import this module. Changes here propagate everywhere.
 
 import pandas as pd
 import streamlit as st
-from collections import Counter
 
 
 # ============================================================
 # Trend definitions
 # ============================================================
 
-# Internal names must match the column prefixes written by prep_data.py
-# (e.g. 'Enterprise SaaS' -> column 'is_Enterprise_SaaS')
 TREND_NAMES      = ['AI', 'Enterprise SaaS', 'Fintech', 'Developer Tools']
 REFERENCE_TRENDS = ['Enterprise SaaS', 'Fintech', 'Developer Tools']
-
-# Legacy aliases kept so any teammate code using the old names still works
-WAVE_NAMES  = TREND_NAMES
-PAST_WAVES  = REFERENCE_TRENDS
 
 
 def trend_col(trend_name):
     """'Enterprise SaaS' -> 'is_Enterprise_SaaS'"""
     return f'is_{trend_name.replace(" ", "_")}'
 
-# Legacy alias
-wave_col = trend_col
-
 
 # ============================================================
-# Color palette
+# Color palette  (colorblind-safe, verified via colorbrewer2.org)
 # ============================================================
 
-# Colorblind-safe (verified via colorbrewer2.org, safe for deuteranopia/protanopia).
-# In the Section 01 overview chart all reference trends appear as gray dashed lines;
-# these colors are used in the detailed Magnitude tab and network visualizations.
 COLORS = {
     'AI':              '#E6550D',  # orange -- primary signal
     'Enterprise SaaS': '#3182BD',  # blue
@@ -97,11 +84,6 @@ def compute_trend_peaks(df):
     })
 
 
-# Legacy aliases
-compute_wave_share_yearly = compute_trend_share_yearly
-compute_wave_peaks        = compute_trend_peaks
-
-
 # ============================================================
 # Aggregation -- coexistence
 # ============================================================
@@ -120,87 +102,10 @@ def compute_ai_coexistence(df):
         result[f'AI in {ref_trend}'] = rate
     return result.round(1)
 
-# Legacy alias
-compute_ai_penetration = compute_ai_coexistence
-
-
-# ============================================================
-# Aggregation -- overlap matrix
-# ============================================================
-
-def compute_overlap_matrix(df):
-    """Pairwise company-count overlap matrix across all four trends."""
-    matrix = pd.DataFrame(index=TREND_NAMES, columns=TREND_NAMES, dtype=int)
-    for t1 in TREND_NAMES:
-        for t2 in TREND_NAMES:
-            matrix.loc[t1, t2] = (df[trend_col(t1)] & df[trend_col(t2)]).sum()
-    return matrix
-
-
-# ============================================================
-# Aggregation -- co-occurrence network
-# ============================================================
-
-def compute_cooccurrence(df, year=None, top_n=30, min_count=5):
-    """Build tag co-occurrence network data.
-
-    Args:
-        df:        main dataframe
-        year:      filter to a single year; None uses all years
-        top_n:     keep only the top-N most frequent tags as nodes
-        min_count: drop edges with fewer co-occurrences than this
-
-    Returns:
-        edges: list of dicts {'tag1', 'tag2', 'count'}
-        nodes: dict mapping tag -> {'n_companies', 'ai_pct'}
-    """
-    df_use = df[df['year'] == year] if year is not None else df
-
-    tag_counts = df_use.explode('tag_list')['tag_list'].value_counts()
-    top_tags   = set(tag_counts.head(top_n).index.tolist())
-
-    pair_counter = Counter()
-    for tags in df_use['tag_list']:
-        if not isinstance(tags, list):
-            continue
-        relevant = [t for t in tags if t in top_tags]
-        for i, t1 in enumerate(relevant):
-            for t2 in relevant[i+1:]:
-                pair_counter[tuple(sorted([t1, t2]))] += 1
-
-    edges = [
-        {'tag1': p[0], 'tag2': p[1], 'count': c}
-        for p, c in pair_counter.items() if c >= min_count
-    ]
-
-    nodes = {}
-    for tag in top_tags:
-        mask = df_use['tag_list'].apply(
-            lambda x: tag in x if isinstance(x, list) else False
-        )
-        sub = df_use[mask]
-        n = len(sub)
-        nodes[tag] = {
-            'n_companies': n,
-            'ai_pct':      round(sub['is_AI'].mean() * 100 if n > 0 else 0, 1),
-        }
-
-    return edges, nodes
-
 
 # ============================================================
 # Aggregation -- geography
 # ============================================================
-
-def compute_region_share(df, exclude_unknown=True):
-    """Share of AI vs non-AI companies in each region, by year."""
-    df_use = df[df['region'] != 'Unknown'] if exclude_unknown else df
-    grouped = df_use.groupby(['year', 'is_AI', 'region']).size().reset_index(name='n')
-    totals  = df_use.groupby(['year', 'is_AI']).size().reset_index(name='total')
-    merged  = grouped.merge(totals, on=['year', 'is_AI'])
-    merged['pct'] = (merged['n'] / merged['total'] * 100).round(1)
-    return merged
-
 
 def compute_bay_area_concentration(df, exclude_unknown=True):
     """Bay Area share over time, split by AI vs non-AI.
@@ -244,7 +149,7 @@ def compute_city_stats(df, year=None, top_n=20):
 # ============================================================
 
 def apply_global_style():
-    """Inject global CSS. Call once at the top of app.py."""
+    """Inject global CSS. Call once at the top of each page."""
     st.markdown("""
         <style>
         /* Hide Streamlit chrome */
@@ -301,18 +206,6 @@ def apply_global_style():
             margin: 0 0 28px;
         }
 
-        /* Three measurements intro */
-        .measurements-intro {
-            font-size: 15px;
-            color: #555;
-            line-height: 1.65;
-            max-width: 700px;
-            padding: 0 0 8px;
-            border-left: 3px solid #E8E8E8;
-            padding-left: 18px;
-            margin-bottom: 32px;
-        }
-
         /* Section divider */
         .section-rule {
             border-top: 1px solid #E8E8E8;
@@ -331,15 +224,6 @@ def apply_global_style():
             color: #111;
         }
         .finding-box strong { color: #E6550D; font-weight: 600; }
-
-        /* "See evidence" arrow */
-        .see-evidence {
-            text-align: right;
-            color: #999;
-            font-size: 14px;
-            margin-top: 12px;
-            letter-spacing: 0.3px;
-        }
 
         /* Metric cards */
         [data-testid="metric-container"] {
