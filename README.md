@@ -1,4 +1,4 @@
-# Does the AI Trend Follow the Patterns of Earlier YC Trends?
+# Group O: Does the AI Trend Follow the Patterns of Earlier YC Trends?
 
 **Columbia University QMSS GR5063 — Data Visualization, Spring 2026**  
 Jiahao Huang (jh5140) · Xiang Fan (xf2300) · Zhicheng Jiang (zj2433) · Yehua Huang (yh3932)
