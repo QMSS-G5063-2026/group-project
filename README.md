@@ -36,7 +36,7 @@ python prep_data.py
 streamlit run app.py
 ```
 
-Opens at [http://localhost:8501](https://group-project-fqpegdwhzrskzem55ukhfq.streamlit.app/).
+Opens at: http://localhost:8501](https://group-project-fqpegdwhzrskzem55ukhfq.streamlit.app/.
 
 `wordcloud` and `matplotlib` are optional — the text page degrades gracefully if they are not installed.
 
